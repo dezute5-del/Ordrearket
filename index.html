@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="nb">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Ordrearket</title>
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="Ordrearket" />
+<meta name="theme-color" content="#EFEDE3" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #EFEDE3; color: #20242B; font-family: 'Inter', sans-serif; }
+  .font-display { font-family: 'Fraunces', serif; }
+  .font-mono { font-family: 'IBM Plex Mono', monospace; }
+  .stitch-rule { height: 0; border-top: 2px dashed #C69A3D; opacity: 0.6; margin-top: 1rem; }
+  .stamp { transform: rotate(-6deg); font-family: 'Fraunces', serif; letter-spacing: 0.08em; }
+  input, textarea { background: #FBF9F3; border: 1px solid #D8D2C0; font-family: inherit; font-size: 0.875rem; border-radius: 4px; padding: 6px 8px; width: 100%; }
+  input:focus, textarea:focus { outline: none; border-color: #A63A46; }
+  button { font-family: inherit; cursor: pointer; }
+  .section-title { font-family: 'Fraunces', serif; font-weight: 600; font-size: 0.8rem; letter-spacing: 0.06em; text-transform: uppercase; color: #A63A46; margin: 20px 0 8px; }
+  .pill { font-size: 0.75rem; padding: 4px 10px; border-radius: 999px; font-weight: 500; border: 1px solid #D8D2C0; background: #FBF9F3; color: #4A4738; }
+  .pill.active { background: #1F2A44; color: #F4F1E8; border-color: #1F2A44; }
+  .card { background: #FBF9F3; border: 1px solid #D8D2C0; border-radius: 10px; padding: 16px; margin-bottom: 12px; }
+  .swatch { width: 8px; height: 8px; border-radius: 999px; display: inline-block; margin-right: 4px; }
+  .thread-tag { font-size: 0.75rem; padding: 2px 8px; border-radius: 999px; background: #F4F1E8; border: 1px solid #D8D2C0; display: inline-flex; align-items: center; }
+  .btn-primary { background: #A63A46; color: white; border: none; border-radius: 6px; padding: 8px 14px; font-weight: 600; font-size: 0.875rem; }
+  .btn-secondary { background: #FBF9F3; border: 1px solid #D8D2C0; border-radius: 6px; padding: 8px 14px; font-weight: 500; font-size: 0.875rem; color: #1F2A44; }
+  .field-label { font-size: 0.75rem; font-weight: 500; color: #4A4738; display: block; margin-bottom: 4px; }
+  .grid { display: grid; gap: 12px; }
+  .modal-overlay { position: fixed; inset: 0; background: rgba(32,36,43,0.55); display: flex; justify-content: center; align-items: flex-start; padding: 16px; overflow-y: auto; z-index: 50; }
+  .modal { width: 100%; max-width: 640px; background: #F4F1E8; border-radius: 10px; padding: 20px; margin: 32px 0; }
+  .print-only { display: none; }
+  @media print {
+    .no-print { display: none !important; }
+    .print-only { display: block !important; }
+    body { background: white !important; }
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 0.75rem; }
+  th { text-align: left; border-bottom: 2px solid #20242B; padding: 4px 8px 4px 0; }
+  td { border-bottom: 1px solid #ccc; padding: 4px 8px 4px 0; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useMemo } = React;
+
+// PASTE your deployed Google Apps Script Web App URL here (see setup steps you were given).
+// It looks like: https://script.google.com/macros/s/AKfycb.../exec
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyVWJkvVP0ZLLgEDsnGKHb_QzrSUs9zxaOnu7TAEryGtA4GVWxj4KteD_GyeftIQaoG/exec";
+
+const NAMED_COLORS = {
+  red: "#B3252F", rod: "#B3252F", crimson: "#B3252F", maroon: "#7A2331", burgundy: "#6E2436",
+  blue: "#2C4A7C", bla: "#2C4A7C", navy: "#1F2A44", teal: "#2C6E6B", turquoise: "#2FA6A1",
+  green: "#3E6B4F", gronn: "#3E6B4F", olive: "#6E7F42", sage: "#6E7F63", forest: "#2E4B34",
+  yellow: "#D9B24C", gul: "#D9B24C", gold: "#C69A3D", gull: "#C69A3D", mustard: "#B98B2E",
+  cream: "#E8DCC0", orange: "#C0713A", rust: "#A6572E", pink: "#C97B94", rose: "#B85C74",
+  purple: "#5E4677", lilla: "#5E4677", lavender: "#8B7CA6", violet: "#6C4A85",
+  black: "#20242B", svart: "#20242B", white: "#F4F1E8", hvit: "#F4F1E8",
+  grey: "#7C7C74", gray: "#7C7C74", "grå": "#7C7C74", gra: "#7C7C74", silver: "#B8B7AC", solv: "#B8B7AC",
+  brown: "#5B4432", brun: "#5B4432", tan: "#B79A73", beige: "#C9BB9C", peach: "#D9A47E",
+  magenta: "#A13A6B", coral: "#C97456",
+};
+
+function normalizeColorWord(w) {
+  return w.toLowerCase().replace(/[^a-zæøå]/g, "").replace(/ø/g, "o").replace(/å/g, "a").replace(/æ/g, "ae");
+}
+
+function colorFor(name) {
+  const raw = name.trim();
+  const key = raw.toLowerCase();
+  if (NAMED_COLORS[key]) return NAMED_COLORS[key];
+  // colour name may be followed by a thread number, e.g. "Hvit 1801" — try each word
+  const words = raw.split(/\s+/);
+  for (const w of words) {
+    const norm = normalizeColorWord(w);
+    if (NAMED_COLORS[norm]) return NAMED_COLORS[norm];
+  }
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) hash = key.charCodeAt(i) + ((hash << 5) - hash);
+  const hue = Math.abs(hash) % 360;
+  return `hsl(${hue}, 38%, 42%)`;
+}
+
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+function todayStr() {
+  return new Date().toISOString().slice(0, 10);
+}
+function fmtDate(d) {
+  if (!d) return "—";
+  const dt = new Date(d + "T00:00:00");
+  if (isNaN(dt)) return d;
+  return dt.toLocaleDateString("nb-NO", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+const PRODUCT_TYPE_OPTIONS = [
+  "Gi (kampsportdrakt)",
+  "Belte",
+  "Patch / merke",
+  "Hettegenser / tekstil",
+  "Hodebeskytter",
+  "Annet",
+];
+const PLASSERING_OPTIONS = ["Venstre bryst", "Høyre bryst", "Rygg", "Belteende", "Arm / erme", "Annet"];
+const BAKSTYKKE_OPTIONS = ["Rivbar", "Dobbel lag", "Klippbar", "Annet"];
+const TOPPING_OPTIONS = ["Ingen", "Vannløselig (Avalon)"];
+const OPPSPENNING_OPTIONS = ["Standard ramme", "Fast Clamp"];
+
+function emptyProductLine() {
+  return { id: uid(), type: PRODUCT_TYPE_OPTIONS[0], typeAnnet: "", antall: "", notater: "" };
+}
+function emptyDesign() {
+  return { id: uid(), designkode: "", plassering: [], plasseringAnnet: "", storrelse: "", tradfarger: "", spesielleHensyn: "" };
+}
+function emptyOrder() {
+  return {
+    id: null, ordrenr: "", datoMottatt: todayStr(), kunde: "", kontakt: "",
+    products: [emptyProductLine()],
+    designs: [emptyDesign()],
+    bakstykke: "", bakstykkeAnnet: "", topping: "", oppspenning: "",
+    lineItems: [{ id: uid(), beskrivelse: "", antall: "1", enhetspris: "" }],
+    rabatt: "", interneNotater: "", invoiced: false,
+  };
+}
+function lineSum(li) { return (parseFloat(li.antall) || 0) * (parseFloat(li.enhetspris) || 0); }
+function subtotal(order) { return order.lineItems.reduce((s, li) => s + lineSum(li), 0); }
+function total(order) { return Math.max(0, subtotal(order) - (parseFloat(order.rabatt) || 0)); }
+
+function Pills({ options, value, onChange, multi }) {
+  function isActive(opt) { return multi ? value.includes(opt) : value === opt; }
+  function toggle(opt) {
+    if (multi) onChange(value.includes(opt) ? value.filter((v) => v !== opt) : [...value, opt]);
+    else onChange(value === opt ? "" : opt);
+  }
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+      {options.map((opt) => (
+        <button type="button" key={opt} onClick={() => toggle(opt)} className={"pill" + (isActive(opt) ? " active" : "")}>
+          {opt}
+        </button>
+      ))}
+    </div>
+  );
+}
+function Field({ label, children, style }) {
+  return <label className="field-label" style={style}>{label}<div style={{ marginTop: 4 }}>{children}</div></label>;
+}
+
+function StitchLedger() {
+  const [orders, setOrders] = useState([]);
+  const [loaded, setLoaded] = useState(false);
+  const [saveError, setSaveError] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState(emptyOrder());
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState("all");
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  const [printSingleId, setPrintSingleId] = useState(null);
+  const [previewId, setPreviewId] = useState(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(SCRIPT_URL);
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setOrders(data);
+          setLoaded(true); // only allow saving after a confirmed successful load
+        } else {
+          setLoadFailed(true);
+        }
+      } catch (e) {
+        setLoadFailed(true); // never mark as loaded on failure — prevents wiping the sheet with an empty save
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (!loaded) return;
+    (async () => {
+      try {
+        const res = await fetch(SCRIPT_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify(orders),
+        });
+        setSaveError(!res.ok);
+      } catch (e) { setSaveError(true); }
+    })();
+  }, [orders, loaded]);
+
+  function openNew() { setForm(emptyOrder()); setShowForm(true); }
+  function exportBackup() {
+    const blob = new Blob([JSON.stringify(orders, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "ordrearket-backup-" + todayStr() + ".json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+  function importBackup(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(reader.result);
+        if (!Array.isArray(data)) throw new Error("not an array");
+        if (window.confirm("Importere " + data.length + " ordrer fra backup? Dette erstatter alt som vises nå.")) {
+          setOrders(data);
+        }
+      } catch (err) {
+        window.alert("Kunne ikke lese denne filen som en gyldig backup.");
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  }
+  function printSingle(id) {
+    setPrintSingleId(id);
+    setTimeout(() => window.print(), 50);
+  }
+  function openEdit(order) { setForm(JSON.parse(JSON.stringify(order))); setShowForm(true); }
+  function saveForm(e) {
+    e.preventDefault();
+    const record = { ...form, id: form.id || uid() };
+    setOrders((prev) => {
+      const exists = prev.some((o) => o.id === record.id);
+      if (exists) return prev.map((o) => (o.id === record.id ? record : o));
+      return [record, ...prev];
+    });
+    setShowForm(false);
+  }
+  function toggleInvoiced(id) { setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, invoiced: !o.invoiced } : o))); }
+  function doDelete(id) { setOrders((prev) => prev.filter((o) => o.id !== id)); setConfirmDelete(null); }
+  function updateLineItem(idx, field, val) {
+    setForm((f) => { const items = [...f.lineItems]; items[idx] = { ...items[idx], [field]: val }; return { ...f, lineItems: items }; });
+  }
+  function addLineItem() {
+    setForm((f) => ({ ...f, lineItems: [...f.lineItems, { id: uid(), beskrivelse: "", antall: "1", enhetspris: "" }] }));
+  }
+  function removeLineItem(idx) { setForm((f) => ({ ...f, lineItems: f.lineItems.filter((_, i) => i !== idx) })); }
+  function updateProductLine(idx, field, val) {
+    setForm((f) => { const items = [...f.products]; items[idx] = { ...items[idx], [field]: val }; return { ...f, products: items }; });
+  }
+  function addProductLine() { setForm((f) => ({ ...f, products: [...f.products, emptyProductLine()] })); }
+  function removeProductLine(idx) { setForm((f) => ({ ...f, products: f.products.filter((_, i) => i !== idx) })); }
+  function updateDesign(idx, field, val) {
+    setForm((f) => { const items = [...f.designs]; items[idx] = { ...items[idx], [field]: val }; return { ...f, designs: items }; });
+  }
+  function addDesign() { setForm((f) => ({ ...f, designs: [...f.designs, emptyDesign()] })); }
+  function removeDesign(idx) { setForm((f) => ({ ...f, designs: f.designs.filter((_, i) => i !== idx) })); }
+
+  const filtered = useMemo(() => {
+    let list = [...orders].sort((a, b) => (b.ordrenr || "").localeCompare(a.ordrenr || "", "nb", { numeric: true, sensitivity: "base" }));
+    if (filter === "invoiced") list = list.filter((o) => o.invoiced);
+    if (filter === "unbilled") list = list.filter((o) => !o.invoiced);
+    const q = query.trim().toLowerCase();
+    if (q) list = list.filter((o) => {
+      const designkoder = (o.designs || []).map((d) => d.designkode).join(" ");
+      const tradfarger = (o.designs || []).map((d) => d.tradfarger).join(" ");
+      return [o.ordrenr, o.kunde, designkoder, tradfarger, o.interneNotater].join(" ").toLowerCase().includes(q);
+    });
+    return list;
+  }, [orders, filter, query]);
+
+  const totals = useMemo(() => {
+    const all = orders.reduce((s, o) => s + total(o), 0);
+    const unbilled = orders.filter((o) => !o.invoiced).reduce((s, o) => s + total(o), 0);
+    return { all, unbilled, count: orders.length };
+  }, [orders]);
+
+  return (
+    <div>
+      <header className="no-print" style={{ padding: "24px 20px 16px", borderBottom: "1px solid #D8D2C0" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+          <div>
+            <h1 className="font-display" style={{ fontSize: "2rem", color: "#1F2A44", margin: 0 }}>Ordrearket</h1>
+            <p style={{ fontSize: "0.875rem", color: "#6B6656", margin: "4px 0 0" }}>Ordreregister for brodering</p>
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={exportBackup} className="btn-secondary" title="Last ned en sikkerhetskopi av alle ordrer">⬇ Eksporter backup</button>
+            <label className="btn-secondary" style={{ cursor: "pointer" }} title="Gjenopprett fra en tidligere backup-fil">
+              ⬆ Importer backup
+              <input type="file" accept="application/json" onChange={importBackup} style={{ display: "none" }} />
+            </label>
+            <button onClick={() => { setPrintSingleId(null); setTimeout(() => window.print(), 50); }} className="btn-secondary">🖶 Skriv ut alle</button>
+            <button onClick={openNew} className="btn-primary">＋ Ny ordre</button>
+          </div>
+        </div>
+        <div className="stitch-rule" />
+      </header>
+
+      {loadFailed && (
+        <div className="no-print" style={{ margin: "16px 20px 0", padding: "12px 16px", background: "#F5DEDD", border: "2px solid #A63A46", borderRadius: 8, color: "#7A2331", fontSize: "0.875rem", fontWeight: 600 }}>
+          ⚠ Kunne ikke laste inn arket. Ingenting du gjør nå blir lagret — ikke registrer nye ordrer før dette er løst. Prøv å laste siden på nytt, eller sjekk internett-tilkoblingen.
+        </div>
+      )}
+
+      <div className="no-print font-mono" style={{ padding: "16px 20px", display: "flex", flexWrap: "wrap", gap: 24, fontSize: "0.875rem", color: "#4A4738" }}>
+        <div><strong>{totals.count}</strong> ordrer</div>
+        <div>Totalt <strong>{totals.all.toFixed(2)} kr</strong></div>
+        <div>Ikke fakturert <strong style={{ color: "#A63A46" }}>{totals.unbilled.toFixed(2)} kr</strong></div>
+        {saveError && !loadFailed && <div style={{ color: "#A63A46" }}>Kunne ikke lagre siste endring — sjekk internett eller Apps Script-lenken</div>}
+      </div>
+
+      <div className="no-print" style={{ padding: "0 20px 16px", display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
+        <div style={{ flex: 1, minWidth: 200, background: "#FBF9F3", border: "1px solid #D8D2C0", borderRadius: 6, padding: "8px 12px" }}>
+          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="🔍 Søk kunde, ordrenr, designkode, tråd…" style={{ border: "none", background: "transparent", padding: 0 }} />
+        </div>
+        <div style={{ display: "flex", gap: 4 }}>
+          {[["all", "Alle"], ["unbilled", "Ikke fakturert"], ["invoiced", "Fakturert"]].map(([key, label]) => (
+            <button key={key} onClick={() => setFilter(key)} className="btn-secondary" style={filter === key ? { background: "#1F2A44", color: "#F4F1E8", borderColor: "#1F2A44" } : {}}>
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <main className="no-print" style={{ padding: "0 20px 60px" }}>
+        {loaded && filtered.length === 0 && (
+          <div style={{ textAlign: "center", padding: "60px 0", color: "#8A8570" }}>
+            {orders.length === 0 ? "Ingen ordrer ennå. Legg til den første." : "Ingen treff på søket."}
+          </div>
+        )}
+        {filtered.map((o) => {
+          const activeProducts = (o.products || []).filter((p) => p.antall);
+          const designkoder = (o.designs || []).map((d) => d.designkode).filter(Boolean);
+          const threads = [...new Set((o.designs || []).flatMap((d) => d.tradfarger.split(",").map((t) => t.trim()).filter(Boolean)))];
+          return (
+            <div key={o.id} className="card">
+              <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 12 }}>
+                <div style={{ flex: 1, minWidth: 220 }}>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                    {o.ordrenr && <span className="font-mono" style={{ fontSize: "0.75rem", padding: "2px 6px", borderRadius: 4, background: "#E3DCC5", color: "#4A4738" }}>#{o.ordrenr}</span>}
+                    <span className="font-mono" style={{ fontSize: "0.75rem", color: "#8A8570" }}>Mottatt {fmtDate(o.datoMottatt)}</span>
+                  </div>
+                  <p className="font-display" style={{ fontWeight: 600, color: "#1F2A44", margin: "4px 0 0" }}>{o.kunde || "Uten kundenavn"}</p>
+                  {o.kontakt && <p style={{ fontSize: "0.75rem", color: "#6B6656", margin: "2px 0 0" }}>{o.kontakt}</p>}
+                  {(designkoder.length > 0 || activeProducts.length > 0) && (
+                    <p style={{ fontSize: "0.75rem", color: "#4A4738", margin: "4px 0 0" }}>
+                      {designkoder.length > 0 && <>Design: {designkoder.join(", ")} · </>}
+                      {activeProducts.map((p) => (p.type === "Annet" ? (p.typeAnnet || "Annet") : p.type.split(" ")[0])).join(", ")}
+                    </p>
+                  )}
+                  {threads.length > 0 && (
+                    <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 6 }}>
+                      {threads.map((t, i) => (
+                        <span key={i} className="thread-tag"><span className="swatch" style={{ background: colorFor(t) }}></span>{t}</span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
+                  <span className="font-mono" style={{ fontSize: "1.1rem", fontWeight: 600, color: "#1F2A44" }}>{total(o).toFixed(2)} kr</span>
+                  <button onClick={() => toggleInvoiced(o.id)} className="stamp" style={{ fontSize: "0.75rem", fontWeight: 700, padding: "4px 10px", borderRadius: 6, border: "2px solid " + (o.invoiced ? "#3E6B4F" : "#B3252F"), color: o.invoiced ? "#3E6B4F" : "#B3252F", background: "transparent" }}>
+                    {o.invoiced ? "FAKTURERT" : "IKKE FAKTURERT"}
+                  </button>
+                  <div style={{ display: "flex", gap: 10 }}>
+                    <button onClick={() => setPreviewId(o.id)} title="Forhåndsvisning" style={{ background: "none", border: "none", color: "#6B6656" }}>👁</button>
+                    <button onClick={() => printSingle(o.id)} title="Skriv ut denne ordren" style={{ background: "none", border: "none", color: "#6B6656" }}>🖶</button>
+                    <button onClick={() => openEdit(o)} title="Rediger" style={{ background: "none", border: "none", color: "#6B6656" }}>✎</button>
+                    <button onClick={() => setConfirmDelete(o.id)} title="Slett" style={{ background: "none", border: "none", color: "#6B6656" }}>🗑</button>
+                  </div>
+                </div>
+              </div>
+              {confirmDelete === o.id && (
+                <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px dashed #D8D2C0", display: "flex", gap: 12, alignItems: "center", fontSize: "0.875rem" }}>
+                  <span style={{ color: "#A63A46" }}>Slette denne ordren?</span>
+                  <button onClick={() => doDelete(o.id)} style={{ background: "#A63A46", color: "white", border: "none", borderRadius: 4, padding: "4px 10px", fontSize: "0.75rem" }}>Slett</button>
+                  <button onClick={() => setConfirmDelete(null)} className="btn-secondary" style={{ padding: "4px 10px", fontSize: "0.75rem" }}>Avbryt</button>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </main>
+
+      {previewId && (() => {
+        const o = orders.find((x) => x.id === previewId);
+        if (!o) return null;
+        const activeProducts = (o.products || []).filter((p) => p.antall || p.notater);
+        return (
+          <div className="no-print modal-overlay" onClick={() => setPreviewId(null)}>
+            <div className="modal" onClick={(e) => e.stopPropagation()}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <h2 className="font-display" style={{ fontSize: "1.25rem", color: "#1F2A44", margin: 0 }}>
+                  {o.ordrenr ? "#" + o.ordrenr : "Forhåndsvisning"} {o.kunde && "· " + o.kunde}
+                </h2>
+                <button onClick={() => setPreviewId(null)} style={{ background: "none", border: "none", fontSize: "1.1rem" }}>✕</button>
+              </div>
+
+              <div className="section-title">Ordreoversikt</div>
+              <p style={{ fontSize: "0.875rem", margin: "0 0 4px" }}>Mottatt: {fmtDate(o.datoMottatt)}</p>
+              <p style={{ fontSize: "0.875rem", margin: "0 0 4px" }}>Kunde: {o.kunde || "—"}</p>
+              <p style={{ fontSize: "0.875rem", margin: "0 0 4px" }}>Kontakt: {o.kontakt || "—"}</p>
+
+              <div className="section-title">Produktdetaljer</div>
+              {activeProducts.length === 0 && <p style={{ fontSize: "0.875rem", color: "#8A8570" }}>Ingen produkter registrert.</p>}
+              {activeProducts.map((p) => (
+                <p key={p.id} style={{ fontSize: "0.875rem", margin: "0 0 4px" }}>
+                  {p.type === "Annet" ? (p.typeAnnet || "Annet") : p.type} — {p.antall} stk{p.notater && " · " + p.notater}
+                </p>
+              ))}
+
+              <div className="section-title">Designspesifikasjon</div>
+              {(o.designs || []).map((d, i) => (
+                <div key={d.id} style={{ marginBottom: 10, paddingBottom: 10, borderBottom: i < o.designs.length - 1 ? "1px dashed #D8D2C0" : "none" }}>
+                  <p style={{ fontSize: "0.875rem", fontWeight: 600, margin: "0 0 4px", color: "#1F2A44" }}>{d.designkode || "Design " + (i + 1)}</p>
+                  <p style={{ fontSize: "0.875rem", margin: "0 0 4px" }}>Plassering: {[...d.plassering.filter((p) => p !== "Annet"), d.plasseringAnnet].filter(Boolean).join(", ") || "—"}</p>
+                  <p style={{ fontSize: "0.875rem", margin: "0 0 4px" }}>Størrelse: {d.storrelse || "—"} mm</p>
+                  {d.tradfarger && (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, margin: "4px 0" }}>
+                      {d.tradfarger.split(",").map((t) => t.trim()).filter(Boolean).map((t, ti) => (
+                        <span key={ti} className="thread-tag"><span className="swatch" style={{ background: colorFor(t) }}></span>{t}</span>
+                      ))}
+                    </div>
+                  )}
+                  {d.spesielleHensyn && <p style={{ fontSize: "0.875rem", margin: "4px 0 0", color: "#6B6656" }}>{d.spesielleHensyn}</p>}
+                </div>
+              ))}
+
+              <div className="section-title">Materiale &amp; oppsett</div>
+              <p style={{ fontSize: "0.875rem", margin: "0 0 4px" }}>Bakstykke: {o.bakstykke === "Annet" ? o.bakstykkeAnnet : (o.bakstykke || "—")}</p>
+              <p style={{ fontSize: "0.875rem", margin: "0 0 4px" }}>Topping: {o.topping || "—"}</p>
+              <p style={{ fontSize: "0.875rem", margin: "0 0 4px" }}>Oppspenning: {o.oppspenning || "—"}</p>
+
+              <div className="section-title">Pris</div>
+              {o.lineItems.filter((li) => li.beskrivelse || lineSum(li) > 0).map((li) => (
+                <p key={li.id} style={{ fontSize: "0.875rem", margin: "0 0 4px" }}>{li.beskrivelse || "—"}: {li.antall} × {li.enhetspris} kr = {lineSum(li).toFixed(2)} kr</p>
+              ))}
+              <p className="font-mono" style={{ fontSize: "1rem", fontWeight: 700, marginTop: 8, color: "#1F2A44" }}>Totalpris: {total(o).toFixed(2)} kr</p>
+
+              {o.interneNotater && (<><div className="section-title">Interne notater</div><p style={{ fontSize: "0.875rem" }}>{o.interneNotater}</p></>)}
+
+              <div style={{ marginTop: 12 }}>
+                <span className="stamp" style={{ fontSize: "0.75rem", fontWeight: 700, padding: "4px 10px", borderRadius: 6, border: "2px solid " + (o.invoiced ? "#3E6B4F" : "#B3252F"), color: o.invoiced ? "#3E6B4F" : "#B3252F" }}>
+                  {o.invoiced ? "FAKTURERT" : "IKKE FAKTURERT"}
+                </span>
+              </div>
+
+              <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
+                <button onClick={() => { setPreviewId(null); openEdit(o); }} className="btn-primary" style={{ flex: 1 }}>✎ Rediger</button>
+                <button onClick={() => { setPreviewId(null); printSingle(o.id); }} className="btn-secondary">🖶 Skriv ut</button>
+                <button onClick={() => setPreviewId(null)} className="btn-secondary">Lukk</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {!printSingleId && (
+        <div className="print-only" style={{ padding: 16 }}>
+          <h1 className="font-display" style={{ fontSize: "1.5rem", margin: "0 0 4px" }}>Ordrearket</h1>
+          <p style={{ fontSize: "0.75rem", marginBottom: 16 }}>Skrevet ut {fmtDate(todayStr())} · {filtered.length} ordrer</p>
+          <table>
+            <thead><tr><th>Ordrenr</th><th>Mottatt</th><th>Kunde</th><th>Design</th><th>Tråd</th><th>Total</th><th>Fakturert</th></tr></thead>
+            <tbody>
+              {filtered.map((o) => (
+                <tr key={o.id}>
+                  <td>{o.ordrenr}</td><td>{fmtDate(o.datoMottatt)}</td><td>{o.kunde}</td>
+                  <td>{(o.designs || []).map((d) => d.designkode).filter(Boolean).join(", ")}</td>
+                  <td>{(o.designs || []).map((d) => d.tradfarger).filter(Boolean).join(" / ")}</td>
+                  <td>{total(o).toFixed(2)} kr</td><td>{o.invoiced ? "Ja" : "Nei"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {printSingleId && (() => {
+        const o = orders.find((x) => x.id === printSingleId);
+        if (!o) return null;
+        const activeProducts = (o.products || []).filter((p) => p.antall || p.notater);
+        return (
+          <div className="print-only" style={{ padding: 16 }}>
+            <h1 className="font-display" style={{ fontSize: "1.5rem", margin: "0 0 4px" }}>Ordreark — Brodering</h1>
+            <p style={{ fontSize: "0.75rem", marginBottom: 16 }}>Skrevet ut {fmtDate(todayStr())}</p>
+
+            <div className="section-title" style={{ color: "#20242B" }}>Ordreoversikt</div>
+            <table style={{ marginBottom: 12 }}>
+              <tbody>
+                <tr><td style={{ fontWeight: 600, width: 160 }}>Ordrenr / referanse</td><td>{o.ordrenr}</td></tr>
+                <tr><td style={{ fontWeight: 600 }}>Dato mottatt</td><td>{fmtDate(o.datoMottatt)}</td></tr>
+                <tr><td style={{ fontWeight: 600 }}>Kunde</td><td>{o.kunde}</td></tr>
+                <tr><td style={{ fontWeight: 600 }}>Kontakt</td><td>{o.kontakt}</td></tr>
+              </tbody>
+            </table>
+
+            <div className="section-title" style={{ color: "#20242B" }}>Produktdetaljer</div>
+            <table style={{ marginBottom: 12 }}>
+              <thead><tr><th>Produkttype</th><th>Antall</th><th>Notater</th></tr></thead>
+              <tbody>
+                {activeProducts.map((p) => (
+                  <tr key={p.id}>
+                    <td>{p.type === "Annet" ? (p.typeAnnet || "Annet") : p.type}</td>
+                    <td>{p.antall}</td>
+                    <td>{p.notater}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            <div className="section-title" style={{ color: "#20242B" }}>Designspesifikasjon</div>
+            {(o.designs || []).map((d, i) => (
+              <table key={d.id} style={{ marginBottom: 10 }}>
+                <tbody>
+                  <tr><td style={{ fontWeight: 600, width: 160 }}>Designkode / navn</td><td>{d.designkode}</td></tr>
+                  <tr><td style={{ fontWeight: 600 }}>Plassering</td><td>{[...d.plassering.filter((p) => p !== "Annet"), d.plasseringAnnet].filter(Boolean).join(", ")}</td></tr>
+                  <tr><td style={{ fontWeight: 600 }}>Størrelse (mm)</td><td>{d.storrelse}</td></tr>
+                  <tr><td style={{ fontWeight: 600 }}>Trådfarger</td><td>{d.tradfarger}</td></tr>
+                  <tr><td style={{ fontWeight: 600 }}>Spesielle hensyn</td><td>{d.spesielleHensyn}</td></tr>
+                </tbody>
+              </table>
+            ))}
+
+            <div className="section-title" style={{ color: "#20242B" }}>Materiale &amp; oppsett</div>
+            <table style={{ marginBottom: 12 }}>
+              <tbody>
+                <tr><td style={{ fontWeight: 600, width: 160 }}>Bakstykke (stabilisator)</td><td>{o.bakstykke === "Annet" ? o.bakstykkeAnnet : o.bakstykke}</td></tr>
+                <tr><td style={{ fontWeight: 600 }}>Topping</td><td>{o.topping}</td></tr>
+                <tr><td style={{ fontWeight: 600 }}>Oppspenning</td><td>{o.oppspenning}</td></tr>
+              </tbody>
+            </table>
+
+            <div className="section-title" style={{ color: "#20242B" }}>Pris</div>
+            <table style={{ marginBottom: 4 }}>
+              <thead><tr><th>Beskrivelse</th><th>Antall</th><th>Enhetspris</th><th>Sum</th></tr></thead>
+              <tbody>
+                {o.lineItems.filter((li) => li.beskrivelse || lineSum(li) > 0).map((li) => (
+                  <tr key={li.id}>
+                    <td>{li.beskrivelse}</td><td>{li.antall}</td><td>{li.enhetspris}</td><td>{lineSum(li).toFixed(2)} kr</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div style={{ textAlign: "right", fontSize: "0.8rem", marginBottom: 12 }}>
+              <div>Delsum: {subtotal(o).toFixed(2)} kr</div>
+              <div>Rabatt: {(parseFloat(o.rabatt) || 0).toFixed(2)} kr</div>
+              <div style={{ fontWeight: 700 }}>Totalpris: {total(o).toFixed(2)} kr</div>
+            </div>
+
+            <div className="section-title" style={{ color: "#20242B" }}>Interne notater</div>
+            <p style={{ fontSize: "0.8rem" }}>{o.interneNotater}</p>
+            <p style={{ fontSize: "0.8rem", fontWeight: 700 }}>Fakturert: {o.invoiced ? "Ja" : "Nei"}</p>
+          </div>
+        );
+      })()}
+
+      {showForm && (
+        <div className="no-print modal-overlay">
+          <form onSubmit={saveForm} className="modal">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <h2 className="font-display" style={{ fontSize: "1.25rem", color: "#1F2A44", margin: 0 }}>{form.id ? "Rediger ordre" : "Ny ordre"}</h2>
+              <button type="button" onClick={() => setShowForm(false)} style={{ background: "none", border: "none", fontSize: "1.1rem" }}>✕</button>
+            </div>
+
+            <div className="section-title">Ordreoversikt</div>
+            <div className="grid" style={{ gridTemplateColumns: "1fr 1fr 1fr" }}>
+              <Field label="Ordrenr / referanse"><input value={form.ordrenr} onChange={(e) => setForm({ ...form, ordrenr: e.target.value })} /></Field>
+              <Field label="Dato mottatt"><input type="date" value={form.datoMottatt} onChange={(e) => setForm({ ...form, datoMottatt: e.target.value })} /></Field>
+              <Field label="Kunde"><input value={form.kunde} onChange={(e) => setForm({ ...form, kunde: e.target.value })} /></Field>
+              <Field label="Kontakt (telefon / e-post)" style={{ gridColumn: "1 / -1" }}><input value={form.kontakt} onChange={(e) => setForm({ ...form, kontakt: e.target.value })} /></Field>
+            </div>
+
+            <div className="section-title">Produktdetaljer</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div className="grid" style={{ gridTemplateColumns: "2fr 1fr 3fr 24px", fontSize: "0.75rem", fontWeight: 500, color: "#4A4738" }}>
+                <span>Produkttype</span><span>Antall</span><span>Notater</span><span></span>
+              </div>
+              {form.products.map((p, idx) => (
+                <div key={p.id} className="grid" style={{ gridTemplateColumns: "2fr 1fr 3fr 24px", alignItems: "center" }}>
+                  <select value={p.type} onChange={(e) => updateProductLine(idx, "type", e.target.value)} style={{ background: "#FBF9F3", border: "1px solid #D8D2C0", borderRadius: 4, padding: "6px 8px", fontSize: "0.875rem", fontFamily: "inherit", width: "100%" }}>
+                    {PRODUCT_TYPE_OPTIONS.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+                  </select>
+                  <input placeholder="Antall" value={p.antall} onChange={(e) => updateProductLine(idx, "antall", e.target.value)} />
+                  <input placeholder={p.type === "Annet" ? "Spesifiser type, notater…" : "Notater"} value={p.notater} onChange={(e) => updateProductLine(idx, "notater", e.target.value)} />
+                  <div style={{ display: "flex", justifyContent: "center" }}>
+                    {form.products.length > 1 && <button type="button" onClick={() => removeProductLine(idx)} style={{ background: "none", border: "none", color: "#A63A46" }}>✕</button>}
+                  </div>
+                </div>
+              ))}
+              {form.products.some((p) => p.type === "Annet") && (
+                <div style={{ fontSize: "0.7rem", color: "#8A8570" }}>Tips: bruk notatfeltet til å spesifisere hva "Annet" gjelder.</div>
+              )}
+              <button type="button" onClick={addProductLine} style={{ background: "none", border: "none", color: "#A63A46", fontSize: "0.75rem", fontWeight: 600, textAlign: "left" }}>＋ Legg til linje</button>
+            </div>
+
+            <div className="section-title">Designspesifikasjon</div>
+            {form.designs.map((d, idx) => (
+              <div key={d.id} style={{ border: "1px dashed #D8D2C0", borderRadius: 8, padding: 12, marginBottom: 10 }}>
+                {form.designs.length > 1 && (
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                    <span style={{ fontSize: "0.7rem", fontWeight: 600, color: "#8A8570" }}>Design {idx + 1}</span>
+                    <button type="button" onClick={() => removeDesign(idx)} style={{ background: "none", border: "none", color: "#A63A46", fontSize: "0.75rem" }}>✕ Fjern</button>
+                  </div>
+                )}
+                <div className="grid" style={{ gridTemplateColumns: "1fr 1fr" }}>
+                  <Field label="Designkode / navn"><input value={d.designkode} onChange={(e) => updateDesign(idx, "designkode", e.target.value)} /></Field>
+                  <Field label="Størrelse (mm)"><input value={d.storrelse} onChange={(e) => updateDesign(idx, "storrelse", e.target.value)} /></Field>
+                </div>
+                <Field label="Plassering" style={{ marginTop: 12 }}>
+                  <Pills options={PLASSERING_OPTIONS} value={d.plassering} onChange={(v) => updateDesign(idx, "plassering", v)} multi />
+                  {d.plassering.includes("Annet") && (
+                    <input placeholder="Annet, spesifiser…" value={d.plasseringAnnet} onChange={(e) => updateDesign(idx, "plasseringAnnet", e.target.value)} style={{ marginTop: 8 }} />
+                  )}
+                </Field>
+                <Field label="Trådfarger (kommaseparert)" style={{ marginTop: 12 }}>
+                  <input value={d.tradfarger} onChange={(e) => updateDesign(idx, "tradfarger", e.target.value)} placeholder="f.eks. gull, navy, hvit" />
+                </Field>
+                <Field label="Spesielle hensyn (tetthet, forenkling, skalering, osv)" style={{ marginTop: 12 }}>
+                  <textarea rows="2" value={d.spesielleHensyn} onChange={(e) => updateDesign(idx, "spesielleHensyn", e.target.value)} />
+                </Field>
+              </div>
+            ))}
+            <button type="button" onClick={addDesign} style={{ background: "none", border: "none", color: "#A63A46", fontSize: "0.75rem", fontWeight: 600, textAlign: "left" }}>＋ Legg til design</button>
+
+            <div className="section-title">Materiale &amp; oppsett</div>
+            <Field label="Bakstykke (stabilisator)">
+              <Pills options={BAKSTYKKE_OPTIONS} value={form.bakstykke} onChange={(v) => setForm({ ...form, bakstykke: v })} />
+              {form.bakstykke === "Annet" && (
+                <input placeholder="Annet, spesifiser…" value={form.bakstykkeAnnet} onChange={(e) => setForm({ ...form, bakstykkeAnnet: e.target.value })} style={{ marginTop: 8 }} />
+              )}
+            </Field>
+            <Field label="Topping" style={{ marginTop: 12 }}><Pills options={TOPPING_OPTIONS} value={form.topping} onChange={(v) => setForm({ ...form, topping: v })} /></Field>
+            <Field label="Oppspenning" style={{ marginTop: 12 }}><Pills options={OPPSPENNING_OPTIONS} value={form.oppspenning} onChange={(v) => setForm({ ...form, oppspenning: v })} /></Field>
+
+            <div className="section-title">Pris</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div className="grid" style={{ gridTemplateColumns: "3fr 1fr 1fr 1fr", fontSize: "0.75rem", fontWeight: 500, color: "#4A4738" }}>
+                <span>Beskrivelse</span><span>Antall</span><span>Enhetspris</span><span>Sum</span>
+              </div>
+              {form.lineItems.map((li, idx) => (
+                <div key={li.id} className="grid" style={{ gridTemplateColumns: "3fr 1fr 1fr 1fr", alignItems: "center" }}>
+                  <input value={li.beskrivelse} onChange={(e) => updateLineItem(idx, "beskrivelse", e.target.value)} />
+                  <input type="number" step="1" min="0" value={li.antall} onChange={(e) => updateLineItem(idx, "antall", e.target.value)} />
+                  <input type="number" step="0.01" min="0" value={li.enhetspris} onChange={(e) => updateLineItem(idx, "enhetspris", e.target.value)} />
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span className="font-mono" style={{ fontSize: "0.75rem", flex: 1 }}>{lineSum(li).toFixed(2)}</span>
+                    {form.lineItems.length > 1 && <button type="button" onClick={() => removeLineItem(idx)} style={{ background: "none", border: "none", color: "#A63A46" }}>✕</button>}
+                  </div>
+                </div>
+              ))}
+              <button type="button" onClick={addLineItem} style={{ background: "none", border: "none", color: "#A63A46", fontSize: "0.75rem", fontWeight: 600, textAlign: "left" }}>＋ Legg til linje</button>
+            </div>
+
+            <div className="font-mono" style={{ marginTop: 12, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, color: "#4A4738" }}>
+              <div style={{ display: "flex", gap: 12 }}><span>Delsum</span><span style={{ width: 96, textAlign: "right" }}>{subtotal(form).toFixed(2)} kr</span></div>
+              <div style={{ display: "flex", gap: 12, alignItems: "center" }}><span>Rabatt</span><input type="number" step="0.01" min="0" value={form.rabatt} onChange={(e) => setForm({ ...form, rabatt: e.target.value })} style={{ width: 96 }} /></div>
+              <div style={{ display: "flex", gap: 12, fontSize: "1rem", fontWeight: 600, color: "#1F2A44" }}><span>Totalpris</span><span style={{ width: 96, textAlign: "right" }}>{total(form).toFixed(2)} kr</span></div>
+            </div>
+
+            <div className="section-title">Interne notater</div>
+            <textarea rows="2" value={form.interneNotater} onChange={(e) => setForm({ ...form, interneNotater: e.target.value })} />
+
+            <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: "0.75rem", fontWeight: 500, color: "#4A4738", marginTop: 16 }}>
+              <input type="checkbox" checked={form.invoiced} onChange={(e) => setForm({ ...form, invoiced: e.target.checked })} style={{ width: "auto" }} />
+              Fakturert
+            </label>
+
+            <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
+              <button type="submit" className="btn-primary" style={{ flex: 1 }}>✓ Lagre ordre</button>
+              <button type="button" onClick={() => setShowForm(false)} className="btn-secondary">Avbryt</button>
+            </div>
+          </form>
+        </div>
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<StitchLedger />);
+</script>
+</body>
+</html>
